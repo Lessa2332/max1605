@@ -3,26 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Наірви Слайм у Будиночки</title>
+    <title>Магічна ШІ-Лабораторія Слаймів</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; background: #111322; color: #fff; }
+        body, html { width: 100%; height: 100%; overflow: hidden; font-family: sans-serif; background: #0b0c10; color: #fff; }
 
         #game-screen {
             position: absolute; width: 100%; height: 100%; 
             display: flex; flex-direction: column; justify-content: space-between; align-items: center;
-            background: radial-gradient(circle, #20233c 0%, #0d0e17 100%);
+            background: radial-gradient(circle, #1f2833 0%, #0b0c10 100%);
             padding: 20px;
         }
 
-        /* Вертикальні будиночки */
+        /* Сканер-спалах лінії ШІ */
+        #ai-scanner {
+            position: absolute; width: 100%; height: 6px; background: #45f3ff;
+            box-shadow: 0 0 20px #45f3ff, 0 0 40px #45f3ff; top: -10px; left: 0; z-index: 99;
+            display: none; pointer-events: none;
+        }
+        @keyframes scanMove {
+            0% { top: 0%; } 50% { top: 100%; } 100% { top: -10px; }
+        }
+
+        /* Будиночки-контейнери */
         .houses-container {
             width: 100%; max-width: 600px; display: flex; justify-content: space-around; margin-top: 15px; z-index: 10;
         }
         .house {
-            width: 90px; height: 105px; border-radius: 15px 15px 10px 10px;
+            width: 95px; height: 105px; border-radius: 15px 15px 10px 10px;
             display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
-            padding-bottom: 15px; position: relative; box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+            padding-bottom: 15px; position: relative; box-shadow: 0 8px 15px rgba(0,0,0,0.5);
             transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         .house::before {
@@ -34,66 +44,81 @@
         .house.red { background: #ff4757; color: #ff4757; }
         .house.blue { background: #1e90ff; color: #1e90ff; }
         .house.yellow { background: #ffa500; color: #ffa500; }
-        .door { width: 38px; height: 45px; background: #fff; border-radius: 6px 6px 0 0; }
+        .door { width: 38px; height: 45px; background: #222; border-radius: 6px 6px 0 0; display: flex; justify-content: center; align-items: center; font-size: 24px; }
 
-        /* Зона інтерактиву (Фізика слайм-ниток та шматочків) */
+        /* Інтерактивна зона */
         .interactive-zone {
             flex: 1; width: 100%; max-width: 600px; position: relative; margin: 15px 0;
         }
         canvas { width: 100%; height: 100%; display: block; position: absolute; top: 0; left: 0; z-index: 2; }
 
-        /* Відірвані шматочки слайму, які можна тягати */
-        .slime-piece {
-            position: absolute; width: 70px; height: 70px; border-radius: 50%; cursor: grab; touch-action: none;
+        /* Згенерований ШІ шматочок слайму */
+        #active-piece {
+            position: absolute; width: 80px; height: 80px; border-radius: 50%; cursor: grab; touch-action: none;
             z-index: 5; display: none; transform: translate(-50%, -50%);
-            box-shadow: inset -6px -6px 12px rgba(0,0,0,0.3), 0 6px 12px rgba(0,0,0,0.4);
+            box-shadow: inset -8px -8px 16px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
         }
-        .slime-piece.red { background: #ff4757; border: 4px solid #ff6b81; }
-        .slime-piece.blue { background: #1e90ff; border: 4px solid #70a1ff; }
-        .slime-piece.yellow { background: #ffa500; border: 4px solid #eccc68; }
+        #active-piece.red { background: #ff4757; border: 5px solid #ff6b81; }
+        #active-piece.blue { background: #1e90ff; border: 5px solid #70a1ff; }
+        #active-piece.yellow { background: #ffa500; border: 5px solid #eccc68; }
 
-        /* Текст та інтерфейс перемоги */
-        #win-msg { font-size: 26px; color: #2ed573; font-weight: bold; text-align: center; display: none; text-shadow: 0 0 10px rgba(46,213,115,0.4); z-index: 10; margin-bottom: 10px; }
+        /* Оживлені іграшки під будиночками */
+        .toy-surprise {
+            position: absolute; font-size: 50px; z-index: 6; display: none;
+            transform: translate(-50%, -50%); animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes popIn { 0% { transform: translate(-50%, -50%) scale(0); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        .toy-jump { animation: toyDance 0.6s infinite alternate; }
+        @keyframes toyDance { 0% { transform: translate(-50%, -50%) translateY(0); } 100% { transform: translate(-50%, -50%) translateY(-20px); } }
+
+        /* Інтерфейс фіналу */
+        #win-msg { font-size: 26px; color: #45f3ff; font-weight: bold; text-align: center; display: none; text-shadow: 0 0 15px rgba(69,243,255,0.6); z-index: 10; margin-bottom: 10px; }
         #restart-btn {
-            display: none; background: #2ed573; color: white; border: none; 
+            display: none; background: #45f3ff; color: #111; border: none; 
             padding: 16px 35px; font-size: 20px; font-weight: bold; border-radius: 50px; 
-            cursor: pointer; box-shadow: 0 8px 15px rgba(46,213,115,0.4);
+            cursor: pointer; box-shadow: 0 8px 20px rgba(69,243,255,0.4);
             animation: pulse 1.5s infinite; z-index: 10; margin-bottom: 20px;
         }
 
         @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
-        .confetti { position: absolute; width: 10px; height: 10px; border-radius: 2px; top: -20px; z-index: 100; animation: fall 2.5s linear forwards; }
+        .confetti { position: absolute; width: 10px; height: 10px; border-radius: 50%; top: -20px; z-index: 100; animation: fall 2.5s linear forwards; }
         @keyframes fall { to { transform: translateY(105vh) rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="game-screen">
+        <div id="ai-scanner"></div>
+
         <div class="houses-container">
-            <div class="house red" id="house-red"><div class="door"></div></div>
-            <div class="house blue" id="house-blue"><div class="door"></div></div>
-            <div class="house yellow" id="house-yellow"><div class="door"></div></div>
+            <div class="house red" id="house-red"><div class="door" id="door-red"></div></div>
+            <div class="house blue" id="house-blue"><div class="door" id="door-blue"></div></div>
+            <div class="house yellow" id="house-yellow"><div class="door" id="door-yellow"></div></div>
         </div>
 
         <div class="interactive-zone" id="stage">
             <canvas id="physicsCanvas"></canvas>
             
-            <div class="slime-piece red" id="piece-red" data-color="red"></div>
-            <div class="slime-piece blue" id="piece-blue" data-color="blue"></div>
-            <div class="slime-piece yellow" id="piece-yellow" data-color="yellow"></div>
+            <div id="active-piece"></div>
+
+            <div class="toy-surprise" id="toy-red">🚗</div>
+            <div class="toy-surprise" id="toy-blue">✈️</div>
+            <div class="toy-surprise" id="toy-yellow">🦆</div>
         </div>
 
-        <div id="win-msg">ТИ СУПЕР-МАЛЮК! 🏆✨</div>
+        <div id="win-msg">ШІ ОЖИВИВ ІГРАШКИ! 🤖✨</div>
         <button id="restart-btn" onclick="resetGame()">ГРАТИ ЗНОВУ 🔄</button>
     </div>
 
     <script>
         // --- СИНТЕЗАТОР ЗВУКІВ ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playTone(freq, duration, type='sine') {
+        function playTone(freq, duration, type='sine', slideTo=null) {
             try {
                 let osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                 osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                if(slideTo) osc.frequency.exponentialRampToValueAtTime(slideTo, audioCtx.currentTime + duration);
                 gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
                 osc.connect(gain); gain.connect(audioCtx.destination);
@@ -101,19 +126,23 @@
             } catch(e) {}
         }
 
-        const soundSlice = () => playTone(550, 0.05, 'sine'); // Звук надриву гумки
-        const soundDrag = () => playTone(300, 0.06, 'triangle');
-        const soundSuccess = () => { playTone(523, 0.08); setTimeout(() => playTone(659, 0.12), 60); };
-        const soundWrong = () => playTone(200, 0.22, 'sawtooth');
-        const soundWin = () => { [523, 587, 659, 784, 880, 1046].forEach((n, i) => setTimeout(() => playTone(n, 0.15, 'sine'), i * 70)); };
+        const soundCut = () => playTone(600, 0.15, 'sine', 300); // Тягучий розріз
+        const soundAiScan = () => playTone(880, 0.3, 'triangle', 440); // Ефект сканування ШІ
+        const soundDrag = () => playTone(350, 0.05, 'sine');
+        const soundMagicPop = () => { playTone(400, 0.1); setTimeout(() => playTone(800, 0.15), 60); }; // Оживлення іграшки
+        const soundWrong = () => playTone(150, 0.3, 'sawtooth');
+        const soundWin = () => { [523, 659, 784, 1046].forEach((n, i) => setTimeout(() => playTone(n, 0.2, 'sine'), i * 100)); };
 
-        // --- НАЛАШТУВАННЯ ФІЗИКИ КАНВАСУ ---
+        // --- ФІЗИКА СПІЛЬНОЇ МАСИ СЛАЙМУ ---
         const canvas = document.getElementById('physicsCanvas');
         const ctx = canvas.getContext('2d');
         let width, height;
         let mouse = { x: 0, y: 0, px: 0, py: 0, down: false };
-        let ropes = [];
+        let points = [], links = [];
+        let poolColors = ['red', 'blue', 'yellow']; // Список кольорів для ШІ
         let successCount = 0;
+        let massLeft = 100; // Скільки маси залишилося (у відсотках)
+        let currentPieceColor = null;
 
         function resize() {
             const stage = document.getElementById('stage');
@@ -122,39 +151,47 @@
         }
         window.addEventListener('resize', resize);
 
-        // Клас точки для фізичних ниток слайму
         class VerPoint {
-            constructor(x, y) { this.x = x; this.y = y; this.oldx = x; this.oldy = y; this.pinned = false; }
-            update() { if (this.pinned) return; let vx = (this.x - this.oldx) * 0.95, vy = (this.y - this.oldy) * 0.95; this.oldx = this.x; this.oldy = this.y; this.x += vx; this.y += vy; }
+            constructor(x, y) { this.x = x; this.y = y; this.oldx = x; this.oldy = y; this.pinned = false; this.originX = x; this.originY = y; }
+            update() { 
+                if (this.pinned) return; 
+                let vx = (this.x - this.oldx) * 0.85, vy = (this.y - this.oldy) * 0.85; 
+                this.oldx = this.x; this.oldy = this.y; this.x += vx; this.y += vy; 
+                // Повернення до початкової форми (пружність желе)
+                this.x += (this.originX - this.x) * 0.03; this.y += (this.originY - this.y) * 0.03;
+            }
         }
-        // Клас лінку (зв'язку між точками)
         class VerLink {
-            constructor(p1, p2, len, color) { this.p1 = p1; this.p2 = p2; this.length = len; this.broken = false; this.color = color; }
-            resolve() { if (this.broken) return; let dx = this.p2.x - this.p1.x, dy = this.p2.y - this.p1.y, dist = Math.sqrt(dx*dx + dy*dy), diff = this.length - dist, percent = (diff / dist) * 0.5; if (!this.p1.pinned) { this.p1.x -= dx * percent; this.p1.y -= dy * percent; } if (!this.p2.pinned) { this.p2.x += dx * percent; this.p2.y += dy * percent; } }
+            constructor(p1, p2, len) { this.p1 = p1; this.p2 = p2; this.length = len; this.broken = false; }
+            resolve() { if (this.broken) return; let dx = this.p2.x - this.p1.x, dy = this.p2.y - this.p1.y, dist = Math.sqrt(dx*dx + dy*dy), diff = this.length - dist, percent = (diff / dist) * 0.4; if (!this.p1.pinned) { this.p1.x -= dx * percent; this.p1.y -= dy * percent; } if (!this.p2.pinned) { this.p2.x += dx * percent; this.p2.y += dy * percent; } }
         }
 
-        function createRopes() {
-            ropes = [];
-            const colors = [
-                { hex: '#ff4757', name: 'red', x: width * 0.22 },
-                { hex: '#1e90ff', name: 'blue', x: width * 0.5 },
-                { hex: '#ffa500', name: 'yellow', x: width * 0.78 }
-            ];
+        // Створюємо велику єдину білу масу посередині екрану
+        function createSlimeMass() {
+            points = []; links = [];
+            resize();
+            
+            const centerX = width / 2, centerY = height * 0.55;
+            const segments = 12, radius = Math.min(width, height) * 0.18;
 
-            colors.forEach(c => {
-                let rPoints = [], rLinks = [];
-                let startY = height * 0.2, endY = height * 0.7, segments = 8, segLen = (endY - startY) / segments;
-                
-                for(let i = 0; i <= segments; i++) {
-                    let p = new VerPoint(c.x, startY + i * segLen);
-                    if (i === 0 || i === segments) p.pinned = true; // закріплені краї нитки
-                    rPoints.push(p);
-                }
-                for(let i = 0; i < segments; i++) {
-                    rLinks.push(new VerLink(rPoints[i], rPoints[i+1], segLen, c.hex));
-                }
-                ropes.push({ points: rPoints, links: rLinks, name: c.name, color: c.hex, broken: false });
-            });
+            // Центральна опорна точка
+            let centerPoint = new VerPoint(centerX, centerY);
+            centerPoint.pinned = true;
+            points.push(centerPoint);
+
+            // Зовнішнє кільце великої маси
+            for(let i = 0; i < segments; i++) {
+                let angle = (i / segments) * Math.PI * 2;
+                let p = new VerPoint(centerX + Math.cos(angle) * radius, centerY + Math.sin(angle) * radius);
+                points.push(p);
+            }
+
+            // Зв'язуємо точки, створюючи пружну павутину-масу
+            for(let i = 1; i <= segments; i++) {
+                let next = i === segments ? 1 : i + 1;
+                links.push(new VerLink(points[0], points[i], radius)); // до центру
+                links.push(new VerLink(points[i], points[next], (2 * Math.PI * radius) / segments)); // по колу
+            }
         }
 
         function checkIntersection(p1, p2, p3, p4) {
@@ -165,170 +202,189 @@
             return (0 < lambda && lambda < 1) && (0 < gamma && gamma < 1);
         }
 
-        // --- ГОЛОВНИЙ ЦИКЛ ФІЗИКИ СЛАЙМ-НИТОК ---
+        // --- АНІМАЦІЯ МАСИ ТА СКАНИ ШІ ---
         function animate() {
             ctx.clearRect(0, 0, width, height);
             
-            ropes.forEach(r => {
-                r.points.forEach(p => p.update());
-                
-                // Розрахунок натягу та розриву
-                for (let i = 0; i < 4; i++) {
-                    r.links.forEach(l => {
-                        if (!l.broken) {
-                            l.resolve();
-                            // Перевіряємо чи провів малюк пальцем крізь нитку
-                            if (mouse.down && checkIntersection(l.p1, l.p2, {x: mouse.px, y: mouse.py}, {x: mouse.x, y: mouse.y})) {
-                                if (!r.broken) {
-                                    l.broken = true;
-                                    r.broken = true;
-                                    soundSlice();
-                                    spawnPiece(r.name, l.p1.x, (l.p1.y + l.p2.y) / 2);
-                                }
-                            }
-                        }
-                    });
-                }
+            points.forEach(p => p.update());
+            for (let i = 0; i < 5; i++) { links.forEach(l => { if (!l.broken) l.resolve(); }); }
 
-                // Малювання нитки товстою і чіткою лінією (як слайм-джгут)
-                ctx.beginPath();
-                ctx.strokeStyle = r.color;
-                ctx.lineWidth = 14;
-                ctx.lineCap = 'round';
-                r.links.forEach(l => {
-                    if (!l.broken) {
-                        ctx.moveTo(l.p1.x, l.p1.y);
-                        ctx.lineTo(l.p2.x, l.p2.y);
+            // Обробка розрізання спільної маси
+            const activePiece = document.getElementById('active-piece');
+            if (mouse.down && activePiece.style.display !== 'block' && poolColors.length > 0) {
+                links.forEach(l => {
+                    if (!l.broken && checkIntersection(l.p1, l.p2, {x: mouse.px, y: mouse.py}, {x: mouse.x, y: mouse.y})) {
+                        l.broken = true;
+                        soundCut();
+                        triggerAiScanner(mouse.x, mouse.y);
                     }
                 });
+            }
+
+            // Малюємо білу тягучу масу слайму
+            if (poolColors.length > 0 || activePiece.style.display === 'block') {
+                ctx.beginPath();
+                ctx.fillStyle = 'rgba(245, 246, 250, 0.95)'; // Біла основа слайму
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 8;
+                ctx.lineJoin = 'round';
+                
+                // Малюємо контур нашої маси
+                ctx.moveTo(points[1].x, points[1].y);
+                for(let i = 2; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
                 ctx.stroke();
-            });
+            }
 
             mouse.px = mouse.x; mouse.py = mouse.y;
             requestAnimationFrame(animate);
         }
 
-        // З'явлення відірваного шматочка слайму
-        function spawnPiece(colorName, x, y) {
-            const piece = document.getElementById(`piece-${colorName}`);
+        // Запуск ефекту "ШІ Сканування" та видача випадкового кольору
+        function triggerAiScanner(x, y) {
+            soundAiScan();
+            const scanner = document.getElementById('ai-scanner');
+            scanner.style.display = 'block';
+            scanner.style.animation = 'scanMove 0.4s ease';
+            
+            // Вібрація телефона при розриві (якщо підтримується пристроєм)
+            if (navigator.vibrate) navigator.vibrate(40);
+
+            setTimeout(() => {
+                scanner.style.display = 'none';
+                scanner.style.animation = '';
+                
+                // ШІ вибирає випадковий колір із залишків
+                const randomIndex = Math.floor(Math.random() * poolColors.length);
+                currentPieceColor = poolColors.splice(randomIndex, 1)[0];
+
+                spawnPiece(currentPieceColor, x, y);
+            }, 400);
+        }
+
+        function spawnPiece(color, x, y) {
+            const piece = document.getElementById('active-piece');
+            piece.className = `slime-piece ${color}`;
+            piece.setAttribute('data-color', color);
             piece.style.display = 'block';
             piece.style.left = `${x}px`;
             piece.style.top = `${y}px`;
-            piece.style.transform = `translate(-50%, -50%) scale(1)`;
-            
-            // Надаємо йому початкові збережені змінні координат для drag-and-drop
             piece.currentX = 0; piece.currentY = 0;
+            piece.style.transform = `translate(-50%, -50%) scale(1)`;
         }
 
-        // --- ДРАГ-ЕНД-ДРОП ШМАТОЧКІВ СЛАЙМУ ---
+        // --- ПЕРЕТЯГУВАННЯ СЛАЙМУ ТА ПЕРЕТВОРЕННЯ НА ІГРАШКУ ---
         function initDragAndDrop() {
-            const pieces = document.querySelectorAll('.slime-piece');
+            const piece = document.getElementById('active-piece');
+            let startX = 0, startY = 0;
 
-            pieces.forEach(piece => {
-                let startX = 0, startY = 0;
-                const pColor = piece.getAttribute('data-color');
+            piece.addEventListener('touchstart', dragStart);
+            piece.addEventListener('mousedown', dragStart);
 
-                piece.addEventListener('touchstart', dragStart);
-                piece.addEventListener('mousedown', dragStart);
+            function dragStart(e) {
+                soundDrag();
+                let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                startX = clientX - piece.currentX; startY = clientY - piece.currentY;
 
-                function dragStart(e) {
-                    soundDrag();
-                    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    
-                    startX = clientX - (piece.currentX || 0);
-                    startY = clientY - (piece.currentY || 0);
+                document.addEventListener('touchmove', dragMove, { passive: false });
+                document.addEventListener('mousemove', dragMove);
+                document.addEventListener('touchend', dragEnd);
+                document.addEventListener('mouseup', dragEnd);
+            }
 
-                    document.addEventListener('touchmove', dragMove, { passive: false });
-                    document.addEventListener('mousemove', dragMove);
-                    document.addEventListener('touchend', dragEnd);
-                    document.addEventListener('mouseup', dragEnd);
-                }
+            function dragMove(e) {
+                e.preventDefault();
+                let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                piece.currentX = clientX - startX; piece.currentY = clientY - startY;
+                piece.style.transform = `translate(calc(-50% + ${piece.currentX}px), calc(-50% + ${piece.currentY}px)) scale(1.15)`;
+            }
 
-                function dragMove(e) {
-                    e.preventDefault();
-                    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                    
-                    piece.currentX = clientX - startX;
-                    piece.currentY = clientY - startY;
-                    piece.style.transform = `translate(calc(-50% + ${piece.currentX}px), calc(-50% + ${piece.currentY}px)) scale(1.15)`;
-                }
+            function dragEnd() {
+                document.removeEventListener('touchmove', dragMove);
+                document.removeEventListener('mousemove', dragMove);
+                document.removeEventListener('touchend', dragEnd);
+                document.removeEventListener('mouseup', dragEnd);
 
-                function dragEnd() {
-                    document.removeEventListener('touchmove', dragMove);
-                    document.removeEventListener('mousemove', dragMove);
-                    document.removeEventListener('touchend', dragEnd);
-                    document.removeEventListener('mouseup', dragEnd);
+                const pRect = piece.getBoundingClientRect();
+                const targetHouse = document.getElementById(`house-${currentPieceColor}`);
+                const houseRect = targetHouse.getBoundingClientRect();
 
-                    const pRect = piece.getBoundingClientRect();
-                    const targetHouse = document.getElementById(`house-${pColor}`);
-                    const houseRect = targetHouse.getBoundingClientRect();
+                const isCorrect = !(pRect.right < houseRect.left || pRect.left > houseRect.right || 
+                                    pRect.bottom < houseRect.top || pRect.top > houseRect.bottom);
 
-                    // Перевірка на влучність у свій будиночок
-                    const isCorrect = !(pRect.right < houseRect.left || pRect.left > houseRect.right || 
-                                        pRect.bottom < houseRect.top || pRect.top > houseRect.bottom);
-
-                    // Перевірка на помилку (в інший будиночок)
-                    let hitWrong = false;
-                    ['red', 'blue', 'yellow'].forEach(c => {
-                        if (c !== pColor) {
-                            const wRect = document.getElementById(`house-${c}`).getBoundingClientRect();
-                            if (!(pRect.right < wRect.left || pRect.left > wRect.right || pRect.bottom < wRect.top || pRect.top > wRect.bottom)) hitWrong = true;
-                        }
-                    });
-
-                    if (isCorrect) {
-                        soundSuccess();
-                        piece.style.display = 'none';
-                        targetHouse.classList.add('bounce');
-                        setTimeout(() => targetHouse.classList.remove('bounce'), 300);
-                        successCount++;
-                        checkWin();
-                    } else {
-                        if (hitWrong) soundWrong();
-                        // Повертаємо шматочок на місце надриву
-                        piece.currentX = 0; piece.currentY = 0;
-                        piece.style.transform = `translate(-50%, -50%) scale(1)`;
+                let hitWrong = false;
+                ['red', 'blue', 'yellow'].forEach(c => {
+                    if (c !== currentPieceColor) {
+                        const wRect = document.getElementById(`house-${c}`).getBoundingClientRect();
+                        if (!(pRect.right < wRect.left || pRect.left > wRect.right || pRect.bottom < wRect.top || pRect.top > wRect.bottom)) hitWrong = true;
                     }
+                });
+
+                if (isCorrect) {
+                    soundMagicPop();
+                    piece.style.display = 'none';
+                    targetHouse.classList.add('bounce');
+                    setTimeout(() => targetHouse.classList.remove('bounce'), 300);
+                    
+                    // ОЖИВЛЕННЯ СЮРПРИЗУ-ІГРАШКИ під цим кошиком
+                    const toy = document.getElementById(`toy-${currentPieceColor}`);
+                    toy.style.display = 'block';
+                    toy.style.left = `${houseRect.left + houseRect.width / 2}px`;
+                    toy.style.top = `${houseRect.bottom + 35}px`;
+
+                    successCount++;
+                    checkWin();
+                } else {
+                    if (hitWrong) soundWrong();
+                    piece.currentX = 0; piece.currentY = 0;
+                    piece.style.transform = `translate(-50%, -50%) scale(1)`;
                 }
-            });
+            }
         }
 
         function checkWin() {
             if (successCount === 3) {
-                soundWin();
-                document.getElementById('win-msg').style.display = 'block';
-                document.getElementById('restart-btn').style.display = 'block';
-                spawnConfetti();
+                setTimeout(() => {
+                    soundWin();
+                    document.getElementById('win-msg').style.display = 'block';
+                    document.getElementById('restart-btn').style.display = 'block';
+                    
+                    // Запуск веселого танцю іграшок
+                    document.querySelectorAll('.toy-surprise').forEach(t => t.classList.add('toy-jump'));
+                    spawnConfetti();
+                }, 400);
             }
         }
 
         function spawnConfetti() {
-            const colors = ['#ff4757', '#1e90ff', '#ffa500', '#2ed573'];
-            for (let i = 0; i < 35; i++) {
+            const colors = ['#45f3ff', '#ff4757', '#1e90ff', '#ffa500', '#2ed573'];
+            for (let i = 0; i < 40; i++) {
                 setTimeout(() => {
                     if (successCount < 3) return;
                     const c = document.createElement('div');
                     c.className = 'confetti';
                     c.style.left = Math.random() * 100 + 'vw';
                     c.style.background = colors[Math.floor(Math.random() * colors.length)];
-                    c.style.transform = `scale(${Math.random() * 0.5 + 0.6})`;
-                    c.style.animationDuration = (Math.random() * 1.2 + 1.5) + 's';
+                    c.style.transform = `scale(${Math.random() * 0.6 + 0.6})`;
+                    c.style.animationDuration = (Math.random() * 1.2 + 1.6) + 's';
                     document.body.appendChild(c);
                     setTimeout(() => c.remove(), 2500);
                 }, i * 60);
             }
         }
 
-        // --- УПРАВЛІННЯ ТАЧЕМ ДЛЯ КАНВАСУ ---
+        // --- КЕРУВАННЯ ТАЧЕМ НА КАНВАСІ ---
         function setMouse(e) {
             audioCtx.resume();
             const rect = canvas.getBoundingClientRect();
             let clientX = e.touches ? e.touches[0].clientX : e.clientX;
             let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            mouse.x = clientX - rect.left;
-            mouse.y = clientY - rect.top;
+            mouse.x = clientX - rect.left; mouse.y = clientY - rect.top;
         }
 
         canvas.addEventListener('mousedown', (e) => { mouse.down = true; setMouse(e); mouse.px = mouse.x; mouse.py = mouse.y; });
@@ -339,14 +395,20 @@
         canvas.addEventListener('touchmove', (e) => { e.preventDefault(); setMouse(e); }, { passive: false });
         window.addEventListener('touchend', () => mouse.down = false);
 
-        // --- СТАРТ ТА СКИДАННЯ ---
+        // --- ЗАПУСК ТА СКИДАННЯ ---
         function initGame() {
-            resize();
             successCount = 0;
+            poolColors = ['red', 'blue', 'yellow'];
             document.getElementById('win-msg').style.display = 'none';
             document.getElementById('restart-btn').style.display = 'none';
-            document.querySelectorAll('.slime-piece').forEach(p => p.style.display = 'none');
-            createRopes();
+            document.getElementById('active-piece').style.display = 'none';
+            
+            document.querySelectorAll('.toy-surprise').forEach(t => {
+                t.style.display = 'none';
+                t.classList.remove('toy-jump');
+            });
+
+            createSlimeMass();
         }
 
         function resetGame() {
