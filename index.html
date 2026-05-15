@@ -66,9 +66,8 @@
             border: 5px solid #00cec9;
         }
 
-        /* Кнопка-мікрофон */
         .mic-btn {
-            background: #10ac84; /* Початковий спокійний зелений */
+            background: #10ac84;
             border: none;
             border-radius: 50%;
             width: 95px;
@@ -88,86 +87,53 @@
             font-size: 40px;
         }
 
-        .mic-btn:active {
-            transform: scale(0.9);
-        }
+        .speaking { background: #10ac84 !important; }
 
-        /* Зелений колір (Семик говорить) */
-        .speaking {
-            background: #10ac84 !important;
-        }
-
-        /* Червоний колір + пульсація (Семик слухає) */
         .listening {
             background: #ff6b6b !important;
             animation: pulse 1s infinite;
         }
 
         @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
+            0 { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7); }
             70% { box-shadow: 0 0 0 20px rgba(255, 107, 107, 0); }
             100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
         }
 
         #result-text {
             margin-top: 15px;
-            font-size: 1rem;
+            font-size: 0.95rem;
             color: #57606f;
-            height: 20px;
+            min-height: 20px;
             font-weight: bold;
+            word-break: break-word;
         }
     </style>
 </head>
 <body>
 
 <div class="game-container">
-    <div id="bubble">Привіт! Натисни на мікрофон і давай грати! 🐉</div>
+    <div id="bubble">Привіт! Натисни мікрофон — розбуди Семика! 🐉</div>
     <div id="character">🐉</div> 
     
     <div id="target-image">🌟</div>
     
-    <button class="mic-btn" id="mic-button" onclick="handleButtonClick()"></button>
-    <div id="result-text">Натисни, щоб почати</div>
+    <button class="mic-btn" id="mic-button" onclick="initAndStart()"></button>
+    <div id="result-text">Очікування натискання...</div>
 </div>
 
 <script>
-    // Повний набір з 15 карток
     const steps = [
-        // === Категорія: Овочі та Фрукти ===
         { image: "🍎", question: "Що це смачненьке? Це яблуко?", keywords: ["яблуко", "яблучко", "ням", "апл"] },
         { image: "🍌", question: "Ой, а що це жовтеньке? Банан?", keywords: ["банан", "бананчик", "нана"] },
-        { image: "🥕", question: "Це заюня любить! Що це? Морква?", keywords: ["морква", "морквина", "морквочка"] },
-        { image: "🍅", question: "Який червоний! Що це? Помідор?", keywords: ["помідор", "томат", "помідорчик"] },
-        { image: "🍉", question: "Він такий великий! Що це? Кавун?", keywords: ["кавун", "кавунчик"] },
-
-        // === Категорія: Транспорт ===
         { image: "🚗", question: "Поїхали! Що це? Авто?", keywords: ["машина", "бібіка", "авто", "машинка"] },
-        { image: "🚂", question: "Чух-чух! Що це їде? Потяг?", keywords: ["потяг", "поїзд", "чух", "туту"] },
-        { image: "🚢", question: "Пливе по воді! Що це? Корабель?", keywords: ["корабель", "кораблик", "лодка", "човен"] },
-        { image: "✈️", question: "Летять у небі... Що це? Літак?", keywords: ["літак", "літачок"] },
-        { image: "🚲", question: "Крутимо педалі! Що це? Велосипед?", keywords: ["велосипед", "ровер", "велик"] },
-
-        // === Категорія: Тваринки ===
-        { image: "🐶", question: "Хто це каже гав-гав? Песик?", keywords: ["собака", "песик", "гав", "собачка", "пес"] },
-        { image: "🐱", question: "Мяу! Хто це такий пухнастий? Котик?", keywords: ["кіт", "котик", "киця", "мяу", "кошка"] },
-        { image: "🐸", question: "Ква-ква! Хто це стрибає? Жабка?", keywords: ["жаба", "жабка", "ква"] },
-        { image: "🦁", question: "Рррр! Який грізний! Хто це? Лев?", keywords: ["лев", "левчик", "рр"] },
-        { image: "🐻", question: "В лісі живе, мед жує. Хто це? Ведмедик?", keywords: ["ведмідь", "ведмедик", "мишка"] }
+        { image: "🐶", question: "Хто це каже гав-гав? Песик?", keywords: ["собака", "песик", "гав", "собачка"] }
     ];
 
     let currentStep = 0;
     let gameStarted = false;
-    
-    const synth = window.speechSynthesis;
-    const SpeechRecognition = window.webkitSpeechRecognition || window.SpeechRecognition;
     let recognition = null;
-
-    if (SpeechRecognition) {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'uk-UA';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
-    }
+    const synth = window.speechSynthesis;
 
     const bubble = document.getElementById('bubble');
     const character = document.getElementById('character');
@@ -175,21 +141,50 @@
     const micButton = document.getElementById('mic-button');
     const resultText = document.getElementById('result-text');
 
-    // Керування кліком на кнопку
-    function handleButtonClick() {
+    // Крок 1: Ініціалізація СТРИГО ПІСЛЯ КЛІКУ КОРИСТУВАЧА
+    function initAndStart() {
+        // Активуємо аудіо-контекст для мобільних браузерів
+        if (window.AudioContext || window.webkitAudioContext) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            const ctx = new AudioContext();
+            if (ctx.state === 'suspended') ctx.resume();
+        }
+
+        // Ініціалізуємо розпізнавання мови, якщо ще не створено
+        if (!recognition) {
+            try {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    resultText.innerText = "🚨 Цей браузер не підтримує розпізнавання голосу.";
+                    return;
+                }
+                recognition = new SpeechRecognition();
+                recognition.lang = 'uk-UA';
+                recognition.interimResults = false;
+                recognition.maxAlternatives = 1;
+                setupRecognitionCallbacks();
+            } catch (e) {
+                resultText.innerText = "Помилка створення ШІ-слуху: " + e.message;
+                return;
+            }
+        }
+
         if (!gameStarted) {
             gameStarted = true;
             currentStep = 0;
             runGameStep();
         } else {
-            // Якщо гра вже йде, ручний перезапуск прослуховування за потреби
             startListening();
         }
     }
 
-    // Озвучка Семика (Мікрофон стає ЗЕЛЕНИМ)
     function speak(text, callback) {
-        synth.cancel(); // Скидання попередніх черг
+        if (!synth) {
+            if (callback) callback();
+            return;
+        }
+        synth.cancel(); 
+        
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = 'uk-UA';
         
@@ -203,56 +198,51 @@
             if (callback) callback();
         };
         
-        utterance.onerror = () => {
+        utterance.onerror = (e) => {
             character.classList.remove('bounce');
             micButton.classList.remove('speaking');
+            resultText.innerText = "Помилка звуку: " + e.error;
             if (callback) callback();
         };
 
         synth.speak(utterance);
     }
 
-    // Хід гри
     function runGameStep() {
         if (currentStep >= steps.length) {
-            bubble.innerText = "Ура! Ми пройшли всі 15 карток! Ти супер-герой! 🌟";
-            speak("Ура! Ми пройшли всі картки! Ти супер герой!");
+            bubble.innerText = "Ура! Ми все пройшли! Ти супер! 🌟";
+            speak("Ура! Ми все пройшли! Ти супер!");
             gameStarted = false;
             targetImage.innerText = "🌟";
-            resultText.innerText = "Гру завершено!";
+            resultText.innerText = "Перемогу здобуто!";
             return;
         }
 
         const data = steps[currentStep];
         targetImage.innerText = data.image;
         bubble.innerText = data.question;
-        resultText.innerText = "Семик говорить... (Зелений)";
+        resultText.innerText = "Семик говорить...";
         
         speak(data.question, () => {
-            // Маленька пауза 400мс після того, як ШІ замовк, щоб мікрофон увімкнувся коректно
-            setTimeout(startListening, 400);
+            setTimeout(startListening, 500);
         });
     }
 
-    // Вмикаємо мікрофон (Стає ЧЕРВОНИМ)
     function startListening() {
-        if (!recognition) {
-            resultText.innerText = "Помилка: Браузер не підтримує мікрофон.";
-            return;
-        }
-
+        if (!recognition) return;
+        
         micButton.classList.remove('speaking');
         micButton.classList.add('listening');
-        resultText.innerText = "ГОВОРИ ТЕПЕР! (Червоний)";
+        resultText.innerText = "СЛУХАЮ (Говоріть у мікрофон)";
         
         try {
             recognition.start();
         } catch(e) {
-            // Запобігає крашу додатка, якщо мікрофон уже працював
+            console.log("Рестарт прослуховування");
         }
     }
 
-    if (recognition) {
+    function setupRecognitionCallbacks() {
         recognition.onresult = (event) => {
             micButton.classList.remove('listening');
             const speechToText = event.results[0][0].transcript.toLowerCase();
@@ -262,14 +252,14 @@
             const isCorrect = data.keywords.some(keyword => speechToText.includes(keyword));
 
             if (isCorrect) {
-                bubble.innerText = "Правильно! Молодець! 🎉";
-                speak("Правильно! Молодець!", () => {
+                bubble.innerText = "Правильно! 🎉";
+                speak("Правильно!", () => {
                     currentStep++;
                     setTimeout(runGameStep, 1000);
                 });
             } else {
-                bubble.innerText = "Ой, ану подивись уважніше? 👀";
-                speak("Ой, ану подивись уважніше", () => {
+                bubble.innerText = "Ой, спробуй ще раз? 👀";
+                speak("Ой, спробуй ще раз", () => {
                     setTimeout(startListening, 600);
                 });
             }
@@ -282,11 +272,8 @@
 
         recognition.onerror = (event) => {
             micButton.classList.remove('listening');
-            if (event.error === 'no-speech') {
-                resultText.innerText = "Семик не почув. Натисни, щоб сказати знову.";
-            } else {
-                resultText.innerText = "Помилка мікрофона. Натисни ще раз!";
-            }
+            // Виводимо опис помилки на екран для діагностики
+            resultText.innerText = `Помилка мікрофона: [${event.error}]. Натисни знову.`;
         };
     }
 </script>
