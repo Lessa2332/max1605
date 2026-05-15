@@ -3,188 +3,275 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Магічний Живий Слайм</title>
+    <title>Кольорові Будиночки — Розвивашка</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
-        body, html { width: 100%; height: 100%; overflow: hidden; background: #050510; font-family: sans-serif; }
+        body, html { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #1a1c2e; color: #fff; }
 
-        canvas { display: block; width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-        
-        .hint { 
-            position: absolute; top: 5%; left: 50%; transform: translateX(-50%); 
-            font-size: 24px; color: #39ff14; text-shadow: 0 0 10px #39ff14; 
-            pointer-events: none; text-align: center; font-weight: bold; width: 90%; z-index: 10; 
+        /* Головний екран */
+        #game-screen {
+            position: absolute; width: 100%; height: 100%; 
+            display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+            background: radial-gradient(circle, #2a2d4a 0%, #111322 100%);
+            padding: 20px;
         }
 
-        /* Елементи-емодзі, які будуть "плавати" всередині слайму */
-        .slime-creature {
-            position: absolute; font-size: 55px; pointer-events: none; z-index: 5;
-            transform: translate(-50%, -50%); transition: transform 0.1s ease;
+        /* Верхня панель з будиночками */
+        .houses-container {
+            width: 100%; max-width: 600px; display: flex; justify-content: space-around; margin-top: 20px;
+        }
+        .house {
+            width: 90px; height: 110px; border-radius: 15px 15px 10px 10px;
+            display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+            padding-bottom: 15px; font-weight: bold; font-size: 14px; position: relative;
+            box-shadow: 0 8px 15px rgba(0,0,0,0.3); transition: transform 0.2s ease;
+        }
+        /* Дах будиночка */
+        .house::before {
+            content: ''; position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+            border-left: 55px solid transparent; border-right: 55px solid transparent;
+            border-bottom: 30px solid currentColor; filter: brightness(0.8);
+        }
+        .house.bounce { transform: scale(1.25); }
+
+        /* Кольори будиночків */
+        .house.red { background: #ff4757; color: #ff4757; }
+        .house.blue { background: #1e90ff; color: #1e90ff; }
+        .house.yellow { background: #ffa500; color: #ffa500; }
+        
+        /* Текст всередині будиночка (білий дверний отвір) */
+        .door { width: 40px; height: 50px; background: #fff; border-radius: 8px 8px 0 0; }
+
+        /* Середня зона для перемоги */
+        .center-zone { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; }
+        #win-msg { font-size: 28px; color: #2ed573; font-weight: bold; text-align: center; display: none; text-shadow: 0 0 10px rgba(46,213,115,0.5); }
+
+        /* Нижня панель для кульок */
+        .balls-container {
+            width: 100%; max-width: 500px; min-height: 140px;
+            background: rgba(255, 255, 255, 0.05); border: 3px dashed #535c68;
+            border-radius: 30px; display: flex; justify-content: space-around; align-items: center;
+            padding: 10px; margin-bottom: 20px;
+        }
+
+        /* Кульки для перетягування */
+        .ball {
+            width: 75px; height: 75px; border-radius: 50%; cursor: grab; touch-action: none;
+            box-shadow: inset -8px -8px 15px rgba(0,0,0,0.2), 0 8px 15px rgba(0,0,0,0.3);
+            transition: transform 0.1s;
+        }
+        .ball:active { cursor: grabbing; transform: scale(1.15); }
+        .ball.red { background: #ff4757; border: 4px solid #ff6b81; }
+        .ball.blue { background: #1e90ff; border: 4px solid #70a1ff; }
+        .ball.yellow { background: #ffa500; border: 4px solid #eccc68; }
+
+        /* Кнопка перезапуску */
+        #restart-btn {
+            display: none; background: #2ed573; color: white; border: none; 
+            padding: 18px 40px; font-size: 22px; font-weight: bold; border-radius: 50px; 
+            cursor: pointer; box-shadow: 0 10px 20px rgba(46,213,115,0.4);
+            animation: pulse 1.5s infinite; margin-bottom: 40px;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
+
+        /* Конфеті (Салют) */
+        .confetti {
+            position: absolute; width: 12px; height: 12px; background: #ff4757;
+            border-radius: 3px; top: -20px; z-index: 100; animation: fall 3s linear forwards;
+        }
+        @keyframes fall {
+            to { transform: translateY(105vh) rotate(360deg); }
         }
     </style>
 </head>
 <body>
 
-    <div class="hint">Пальчиком розділяй і збирай слайм! 🦆🐟🦀</div>
-    
-    <div class="slime-creature" id="c1">🦆</div>
-    <div class="slime-creature" id="c2">🐟</div>
-    <div class="slime-creature" id="c3">🦀</div>
+    <div id="game-screen">
+        <div class="houses-container">
+            <div class="house red" id="house-red"><div class="door"></div></div>
+            <div class="house blue" id="house-blue"><div class="door"></div></div>
+            <div class="house yellow" id="house-yellow"><div class="door"></div></div>
+        </div>
 
-    <canvas id="slimeCanvas"></canvas>
+        <div class="center-zone">
+            <div id="win-msg">УРА! МУДРИЙ МАЛЮК! 🏆🌟</div>
+        </div>
+
+        <button id="restart-btn" onclick="resetGame()">ГРАТИ ЗНОВУ 🔄</button>
+
+        <div class="balls-container" id="ballsContainer">
+            </div>
+    </div>
 
     <script>
-        // --- СИНТЕЗАТОР ЗВУКІВ ---
+        // --- СИНТЕЗАТОР СИСТЕМНИХ ЗВУКІВ ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSlimeSound(freq, duration, type='sine') {
+        function playTone(freq, duration, type='sine') {
             try {
                 let osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
                 osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-                // Булькаючий ефект (частота швидко падає вниз)
-                osc.frequency.exponentialRampToValueAtTime(freq / 2, audioCtx.currentTime + duration);
-                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
                 osc.connect(gain); gain.connect(audioCtx.destination);
                 osc.start(); osc.stop(audioCtx.currentTime + duration);
             } catch(e) {}
         }
 
-        const soundSplash = () => playSlimeSound(300, 0.2, 'triangle'); // Плюх при злитті
-        const soundMove = () => playSlimeSound(150, 0.08, 'sine');    // Рух пальця
+        const soundDrag = () => playTone(350, 0.08, 'triangle');
+        const soundSuccess = () => { playTone(523.25, 0.1); setTimeout(() => playTone(659.25, 0.15), 80); }; // Гарний дзинь
+        const soundWrong = () => playTone(180, 0.25, 'sawtooth'); // Помилка
+        const soundWin = () => {
+            let notes = [523, 587, 659, 698, 784, 880, 987, 1046];
+            notes.forEach((n, i) => setTimeout(() => playTone(n, 0.2, 'sine'), i * 80));
+        };
 
-        // --- НАЛАШТУВАННЯ КАНВАСУ ---
-        const canvas = document.getElementById('slimeCanvas');
-        const ctx = canvas.getContext('2d');
-        let width, height;
+        // --- ЛОГІКА ГРИ ---
+        const colors = ['red', 'blue', 'yellow'];
+        let successCount = 0;
 
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-        }
-        window.addEventListener('resize', resize);
-        resize();
-
-        // --- ФІЗИКА КРАПЕЛЬ (МЕТАБОЛИ) ---
-        class Blob {
-            constructor(x, y, r, id) {
-                this.x = x; this.y = y;
-                this.vx = (Math.random() - 0.5) * 3;
-                this.vy = (Math.random() - 0.5) * 3;
-                this.r = r;
-                this.domId = id;
-            }
-            update(mouse) {
-                // Взаємодія з пальцем/мишкою (відштовхування або розганяння)
-                let dx = this.x - mouse.x;
-                let dy = this.y - mouse.y;
-                let dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < 180 && mouse.down) {
-                    let force = (180 - dist) * 0.08;
-                    this.vx += (dx / dist) * force;
-                    this.vy += (dy / dist) * force;
-                    if (Math.random() < 0.15) soundMove();
-                }
-
-                // Рух краплі
-                this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.95; this.vy *= 0.95; // тертя, щоб слайм зупинявся
-
-                // Відбивання від стінок екрану
-                if (this.x < this.r) { this.x = this.r; this.vx *= -1; }
-                if (this.x > width - this.r) { this.x = width - this.r; this.vx *= -1; }
-                if (this.y < this.r) { this.y = this.r; this.vy *= -1; }
-                if (this.y > height - this.r) { this.y = height - this.r; this.vy *= -1; }
-
-                // Прив'язка емодзі-тваринки до центру краплі
-                if (this.domId) {
-                    const el = document.getElementById(this.domId);
-                    if (el) {
-                        el.style.left = `${this.x}px`;
-                        el.style.top = `${this.y}px`;
-                    }
-                }
-            }
-        }
-
-        // Створюємо 3 великі краплі з тваринками всередині
-        const blobs = [
-            new Blob(window.innerWidth * 0.25, window.innerHeight * 0.5, 90, 'c1'),
-            new Blob(window.innerWidth * 0.50, window.innerHeight * 0.4, 85, 'c2'),
-            new Blob(window.innerWidth * 0.75, window.innerHeight * 0.5, 95, 'c3')
-        ];
-
-        // Додамо ще кілька маленьких крапель без тваринок для більшої "рідкості" слайму
-        for(let i=0; i<4; i++) {
-            blobs.push(new Blob(Math.random()*width, Math.random()*height, 50, null));
-        }
-
-        let mouse = { x: -1000, y: -1000, down: false };
-        let lastMergedState = false; // для фіксації моменту злиття крапель
-
-        // --- ГОЛОВНИЙ ЦИКЛ РЕНДЕРУ (МАТЕМАТИКА СЛАЙМУ) ---
-        function loop() {
-            // Оновлюємо фізику крапель
-            blobs.forEach(b => b.update(mouse));
-
-            // Очищення екрану
-            ctx.fillStyle = '#050510';
-            ctx.fillRect(0, 0, width, height);
-
-            // Створюємо ефект рідкого слайму через попіксельний фільтр або математичне поле сили (Metaballs)
-            // Для швидкої роботи на мобільних телефонах малюємо краплі з розмитими радіальними градієнтами, а потім відсікаємо альфа-канал
-            let imageData = ctx.getImageData(0, 0, width, height);
+        function initGame() {
+            successCount = 0;
+            document.getElementById('win-msg').style.display = 'none';
+            document.getElementById('restart-btn').style.display = 'none';
             
-            // Натомість використаємо супер-ефект порогу яскравості прямо в Canvas за допомогою вбудованого розмиття
-            ctx.filter = 'blur(30px) contrast(40)'; // Ось вона — магія злиття!
-            
-            // Малюємо основу слайму неоновим зеленим або бірюзовим кольором
-            ctx.fillStyle = '#39ff14'; // Неоновий зелений слайм
-            blobs.forEach(b => {
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.fill();
+            const container = document.getElementById('ballsContainer');
+            container.style.display = 'flex';
+            container.innerHTML = '';
+
+            // Перемішуємо кольори кульок, щоб вони з'являлися випадково
+            const shuffledColors = [...colors].sort(() => Math.random() - 0.5);
+
+            shuffledColors.forEach(color => {
+                const ball = document.createElement('div');
+                ball.className = `ball ${color}`;
+                ball.id = `ball-${color}`;
+                ball.setAttribute('data-color', color);
+                container.appendChild(ball);
             });
 
-            // Скидаємо фільтр, щоб емодзі та текст не розмивалися
-            ctx.filter = 'none';
+            initDragAndDrop();
+        }
 
-            // Перевіряємо, чи зблизилися великі краплі (чи відбулося злиття) для відтворення звуку "плюх"
-            let closeCount = 0;
-            for (let i = 0; i < 3; i++) {
-                for (let j = i + 1; j < 3; j++) {
-                    let dx = blobs[i].x - blobs[j].x;
-                    let dy = blobs[i].y - blobs[j].y;
-                    if (Math.sqrt(dx*dx + dy*dy) < 180) closeCount++;
+        function initDragAndDrop() {
+            const balls = document.querySelectorAll('.ball');
+
+            balls.forEach(ball => {
+                let startX = 0, startY = 0, currentX = 0, currentY = 0;
+                const ballColor = ball.getAttribute('data-color');
+
+                ball.addEventListener('touchstart', dragStart);
+                ball.addEventListener('mousedown', dragStart);
+
+                function dragStart(e) {
+                    audioCtx.resume();
+                    soundDrag();
+                    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    startX = clientX - currentX; startY = clientY - currentY;
+                    
+                    document.addEventListener('touchmove', dragMove, { passive: false });
+                    document.addEventListener('mousemove', dragMove);
+                    document.addEventListener('touchend', dragEnd);
+                    document.addEventListener('mouseup', dragEnd);
                 }
-            }
-            let currentlyMerged = closeCount > 0;
-            if (currentlyMerged && !lastMergedState) {
-                soundSplash(); // Тільки в момент дотику робимо "бульк!"
-            }
-            lastMergedState = currentlyMerged;
 
-            requestAnimationFrame(loop);
+                function dragMove(e) {
+                    e.preventDefault(); // Заборона скролу
+                    let clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    let clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    currentX = clientX - startX; currentY = clientY - startY;
+                    ball.style.transform = `translate(${currentX}px, ${currentY}px) scale(1.15)`;
+                }
+
+                function dragEnd() {
+                    document.removeEventListener('touchmove', dragMove);
+                    document.removeEventListener('mousemove', dragMove);
+                    document.removeEventListener('touchend', dragEnd);
+                    document.removeEventListener('mouseup', dragEnd);
+
+                    const ballRect = ball.getBoundingClientRect();
+                    const targetHouse = document.getElementById(`house-${ballColor}`);
+                    const houseRect = targetHouse.getBoundingClientRect();
+
+                    // Перевіряємо перетин з його правильним будиночком
+                    const isCorrectHouse = !(ballRect.right < houseRect.left || ballRect.left > houseRect.right || 
+                                             ballRect.bottom < houseRect.top || ballRect.top > houseRect.bottom);
+
+                    // Перевіряємо перетин з БУДЬ-ЯКИМ ІНШИМ будиночком для обробки помилки
+                    let hitWrongHouse = false;
+                    colors.forEach(c => {
+                        if (c !== ballColor) {
+                            const wrongHouseRect = document.getElementById(`house-${c}`).getBoundingClientRect();
+                            if (!(ballRect.right < wrongHouseRect.left || ballRect.left > wrongHouseRect.right || 
+                                  ballRect.bottom < wrongHouseRect.top || ballRect.top > wrongHouseRect.bottom)) {
+                                hitWrongHouse = true;
+                            }
+                        }
+                    });
+
+                    if (isCorrectHouse) {
+                        // Влучне попадання!
+                        soundSuccess();
+                        ball.style.display = 'none';
+                        targetHouse.classList.add('bounce');
+                        setTimeout(() => targetHouse.classList.remove('bounce'), 300);
+                        
+                        successCount++;
+                        checkWin();
+                    } else if (hitWrongHouse) {
+                        // Малюк помилився будиночком
+                        soundWrong();
+                        currentX = 0; currentY = 0;
+                        ball.style.transform = `translate(0px, 0px)`;
+                    } else {
+                        // Просто кинув посеред екрана
+                        currentX = 0; currentY = 0;
+                        ball.style.transform = `translate(0px, 0px)`;
+                    }
+                }
+            });
         }
 
-        // --- ОБРОБКА ДУТИКІВ (ТАЧ-ПОДІЇ) ---
-        function setMouse(e) {
-            audioCtx.resume();
-            let clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            let clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            mouse.x = clientX;
-            mouse.y = clientY;
+        function checkWin() {
+            if (successCount === colors.length) {
+                soundWin();
+                document.getElementById('ballsContainer').style.display = 'none';
+                document.getElementById('win-msg').style.display = 'block';
+                document.getElementById('restart-btn').style.display = 'block';
+                spawnConfetti();
+            }
         }
 
-        window.addEventListener('mousedown', (e) => { mouse.down = true; setMouse(e); });
-        window.addEventListener('mousemove', setMouse);
-        window.addEventListener('mouseup', () => mouse.down = false);
+        // Святковий салют конфеті
+        function spawnConfetti() {
+            const confettiColors = ['#ff4757', '#1e90ff', '#ffa500', '#2ed573', '#00adb5'];
+            for (let i = 0; i < 40; i++) {
+                setTimeout(() => {
+                    if (successCount < colors.length) return; // якщо гру вже скинули
+                    const c = document.createElement('div');
+                    c.className = 'confetti';
+                    c.style.left = Math.random() * 100 + 'vw';
+                    c.style.background = confettiColors[Math.floor(Math.random() * confettiColors.length)];
+                    c.style.transform = `scale(${Math.random() * 0.6 + 0.6})`;
+                    c.style.animationDuration = (Math.random() * 1.5 + 1.5) + 's';
+                    document.body.appendChild(c);
+                    setTimeout(() => c.remove(), 3000);
+                }, i * 60);
+            }
+        }
 
-        window.addEventListener('touchstart', (e) => { mouse.down = true; setMouse(e); });
-        window.addEventListener('touchmove', (e) => { e.preventDefault(); setMouse(e); }, { passive: false });
-        window.addEventListener('touchend', () => mouse.down = false);
+        function resetGame() {
+            // Видаляємо старі конфеті, якщо лишилися
+            document.querySelectorAll('.confetti').forEach(c => c.remove());
+            initGame();
+        }
 
-        loop();
+        // Старт гри
+        initGame();
     </script>
 </body>
 </html>
