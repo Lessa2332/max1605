@@ -56,34 +56,51 @@
         }
 
         #target-image {
-            font-size: 80px;
+            font-size: 90px;
             background: #dfe6e9;
-            width: 150px;
-            height: 150px;
-            line-height: 150px;
+            width: 160px;
+            height: 160px;
+            line-height: 160px;
             border-radius: 50%;
             margin: 0 auto 20px auto;
             border: 5px solid #00cec9;
         }
 
+        /* Кнопка-мікрофон */
         .mic-btn {
-            background: #10ac84;
+            background: #10ac84; /* Початковий зелений колір */
             border: none;
             border-radius: 50%;
-            width: 90px;
-            height: 90px;
+            width: 95px;
+            height: 95px;
             cursor: pointer;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             outline: none;
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Іконка мікрофона всередині кнопки */
+        .mic-btn::before {
+            content: "🎤";
+            font-size: 40px;
         }
 
         .mic-btn:active {
             transform: scale(0.9);
         }
 
+        /* Зелений колір, коли Дракончик говорить */
+        .speaking {
+            background: #10ac84 !important;
+        }
+
+        /* Червоний колір + пульсація, коли мікрофон СЛУХАЄ дитину */
         .listening {
-            background: #ff6b6b;
+            background: #ff6b6b !important;
             animation: pulse 1s infinite;
         }
 
@@ -98,39 +115,54 @@
             font-size: 1rem;
             color: #57606f;
             height: 20px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
 <div class="game-container">
-    <div id="bubble">Привіт! Натисни кнопку і давай грати! 🐉</div>
-    <!-- Поки що замість 3D-моделі використовуємо емодзі для швидкості -->
+    <div id="bubble">Привіт! Натисни на мікрофон і давай грати! 🐉</div>
     <div id="character">🐉</div> 
     
-    <div id="target-image">🚗</div>
+    <div id="target-image">🌟</div>
     
     <button class="mic-btn" id="mic-button" onclick="startGame()"></button>
-    <div id="result-text">Натисни, щоб Семик заговорив</div>
+    <div id="result-text">Натисни, щоб почати</div>
 </div>
 
 <script>
-    // Сценарій гри: що показуємо, що запитуємо, які правильні ключові слова чекаємо
+    // Розширений сценарій гри: 5 овочів/фруктів, 5 видів транспорту, 5 тваринок
     const steps = [
-        { image: "🚗", question: "Що це? Це машина?", keywords: ["машина", "бібіка", "авто"] },
-        { image: "🐶", question: "А це хто? Гав-гав?", keywords: ["собака", "песик", "гав", "собачка"] },
-        { image: "🍎", question: "Яке смачне! Що це?", keywords: ["яблуко", "яблучко", "ням"] }
+        // === Категорія: Овочі та Фрукти ===
+        { image: "🍎", question: "Що це смачненьке? Це яблуко?", keywords: ["яблуко", "яблучко", "ням", "апл"] },
+        { image: "🍌", question: "Ой, а що це жовтеньке? Банан?", keywords: ["банан", "бананчик", "нана"] },
+        { image: "🥕", question: "Це заюня любить! Що це? Морква?", keywords: ["морква", "морквина", "морквочка"] },
+        { image: "🍅", question: "Який червоний! Що це? Помідор?", keywords: ["помідор", "томат", "помідорчик"] },
+        { image: "🍉", question: "Він такий великий! Що це? Кавун?", keywords: ["кавун", "кавунчик"] },
+
+        // === Категорія: Транспорт ===
+        { image: "🚗", question: "Поїхали! Що це? Авто?", keywords: ["машина", "бібіка", "авто", "машинка"] },
+        { image: "🚂", question: "Чух-чух! Що це їде? Потяг?", keywords: ["потяг", "поїзд", "чух", "туту"] },
+        { image: "🚢", question: "Пливе по воді! Що це? Корабель?", keywords: ["корабель", "кораблик", "лодка", "човен"] },
+        { image: "✈️", question: "Летять у небі... Що це? Літак?", keywords: ["літак", "літачок"] },
+        { image: "🚲", question: "Крутимо педалі! Що це? Велосипед?", keywords: ["велосипед", "ровер", "велик"] },
+
+        // === Категорія: Тваринки ===
+        { image: "🐶", question: "Хто це каже гав-гав? Песик?", keywords: ["собака", "песик", "гав", "собачка", "пес"] },
+        { image: "🐱", question: "Мяу! Хто це такий пухнастий? Котик?", keywords: ["кіт", "котик", "киця", "мяу", "кошка"] },
+        { image: "🐸", question: "Ква-ква! Хто це стрибає? Жабка?", keywords: ["жаба", "жабка", "ква"] },
+        { image: "🦁", question: "Рррр! Який грізний! Хто це? Лев?", keywords: ["лев", "левчик", "рр"] },
+        { image: "🐻", question: "В лісі живе, мед жує. Хто це? Ведмедик?", keywords: ["ведмідь", "ведмедик", "мишка"] }
     ];
 
     let currentStep = 0;
     
-    // Ініціалізація синтезу мовлення (ШІ говорить)
     const synth = window.speechSynthesis;
-    // Ініціалізація розпізнавання мовлення (ШІ слухає)
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     
-    recognition.lang = 'uk-UA'; // Налаштовуємо на українську мову
+    recognition.lang = 'uk-UA';
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
@@ -140,72 +172,78 @@
     const micButton = document.getElementById('mic-button');
     const resultText = document.getElementById('result-text');
 
-    // Функція, щоб Дракончик заговорив
+    // Функція розмови Семика (Мікрофон стає ЗЕЛЕНИМ)
     function speak(text, callback) {
-        synth.cancel(); // Зупиняємо попередній голос, якщо він був
-        const utterance = new SpeechSynthesisUtterance(text);
+        synth.cancel();
+        const utterance = new SynthesisUtterance ? new SpeechSynthesisUtterance(text) : new SpeechSynthesisUtterance(text);
         utterance.lang = 'uk-UA';
         
-        character.classList.add('bounce'); // Сем рухається, коли говорить
+        // Перемикаємо кнопку в зелений колір під час мовлення
+        micButton.classList.remove('listening');
+        micButton.classList.add('speaking');
+        character.classList.add('bounce');
         
         utterance.onend = () => {
             character.classList.remove('bounce');
+            micButton.classList.remove('speaking');
             if (callback) callback();
         };
         synth.speak(utterance);
     }
 
-    // Логіка старту або переходу на новий крок
     function startGame() {
         if (currentStep >= steps.length) {
-            bubble.innerText = "Ура! Ми все пройшли! Ти молодець! 🌟";
-            speak("Ура! Ми все пройшли! Ти молодець!");
-            currentStep = 0; // Скидаємо гру
+            bubble.innerText = "Ура! Ми пройшли всі 15 карток! Ти супер-герой! 🌟";
+            speak("Ура! Ми пройшли всі картки! Ти супер герой!");
+            currentStep = 0;
+            targetImage.innerText = "🌟";
             return;
         }
 
         const data = steps[currentStep];
         targetImage.innerText = data.image;
         bubble.innerText = data.question;
+        resultText.innerText = "Семик говорить...";
         
-        // Спочатку Сем задає питання, а потім автоматично вмикається мікрофон
         speak(data.question, () => {
             startListening();
         });
     }
 
-    // Вмикаємо мікрофон
+    // Вмикаємо мікрофон (Стає ЧЕРВОНИМ і пульсує)
     function startListening() {
+        micButton.classList.remove('speaking');
         micButton.classList.add('listening');
-        resultText.innerText = "Семик слухає...";
-        recognition.start();
+        resultText.innerText = "ГОВОРИ ТЕПЕР! (Червоний)";
+        try {
+            recognition.start();
+        } catch(e) {
+            // Якщо вже запущено
+        }
     }
 
-    // Обробка того, що сказала дитина
     recognition.onresult = (event) => {
         micButton.classList.remove('listening');
         const speechToText = event.results[0][0].transcript.toLowerCase();
         resultText.innerText = `Почуто: "${speechToText}"`;
 
         const data = steps[currentStep];
-        // Перевіряємо, чи є сказане слово в списку очікуваних ключів
         const isCorrect = data.keywords.some(keyword => speechToText.includes(keyword));
 
         if (isCorrect) {
-            bubble.innerText = "Правильно! Супер! 🎉";
-            speak("Правильно! Супер!", () => {
+            bubble.innerText = "Правильно! Молодець! 🎉";
+            speak("Правильно! Молодець!", () => {
                 currentStep++;
-                setTimeout(startGame, 1000); // Перехід до наступного через секунду
+                setTimeout(startGame, 1000);
             });
         } else {
-            bubble.innerText = "Ой, спробуй ще раз! Дивись уважно 👀";
-            speak("Ой, спробуй ще раз! Дивись уважно", () => {
-                setTimeout(startListening, 500); // Даємо ще шанс
+            bubble.innerText = "Ой, ану подивись уважніше? 👀";
+            speak("Ой, ану подивись уважніше", () => {
+                setTimeout(startListening, 500);
             });
         }
     };
 
-    // Якщо дитина промовчала
     recognition.onspeechend = () => {
         recognition.stop();
         micButton.classList.remove('listening');
@@ -213,7 +251,7 @@
 
     recognition.onerror = (event) => {
         micButton.classList.remove('listening');
-        resultText.innerText = "Не почула, натисни кнопку знову.";
+        resultText.innerText = "Семик не почув, натисни ще раз!";
     };
 </script>
 
