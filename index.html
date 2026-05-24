@@ -1,1 +1,371 @@
-1
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>УкрГеоЗалізниця — Вагон 1 (7-А)</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        :root {
+            --uz-blue: #002B49;
+            --uz-yellow: #FFD200;
+            --uz-bg: #0A192F;
+            --card-bg: #0F172A;
+            --seat-free: #172A45;
+            --seat-occupied: #10B981;
+            --text-main: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--uz-bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .header {
+            background-color: var(--uz-blue);
+            padding: 20px;
+            border-radius: 16px;
+            border-left: 6px solid var(--uz-yellow);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .header-sub {
+            font-size: 13px;
+            margin-top: 6px;
+            color: #94A3B8;
+        }
+
+        /* Головна сітка: Адаптація під мобільні (Media Queries) */
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 992px) {
+            .main-layout {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+
+        .card-section {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 16px;
+            border: 1px solid #1E293B;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .card-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: var(--uz-yellow);
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #reader {
+            width: 100%;
+            border-radius: 12px;
+            overflow: hidden;
+            border: none !important;
+        }
+
+        /* Інформаційне табло */
+        #ticker {
+            background: #1E293B;
+            color: #94A3B8;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 15px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            border: 1px dashed #334155;
+        }
+
+        .animated-success {
+            background: var(--seat-occupied) !important;
+            color: white !important;
+            border: 1px solid #059669 !important;
+            animation: pulse 0.4s ease-in-out;
+        }
+
+        /* Візуалізація вагону */
+        .wagon {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+        }
+
+        @media (min-width: 576px) {
+            .wagon {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (min-width: 1200px) {
+            .wagon {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .coupe {
+            background: #1E293B;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .coupe-title {
+            font-size: 13px;
+            color: var(--uz-yellow);
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-align: center;
+            background: rgba(0,0,0,0.2);
+            padding: 4px;
+            border-radius: 6px;
+        }
+
+        .seats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .seat {
+            background: var(--seat-free);
+            padding: 12px 6px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid #475569;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            user-select: none;
+        }
+
+        .seat:active {
+            transform: scale(0.95);
+        }
+
+        .occupied {
+            background: var(--seat-occupied);
+            color: white;
+            border-color: #059669;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🚄 УкрГеоЗалізниця</h1>
+    <div class="header-sub">Поїзд №007 «Чорноморськ — Сахара» | Вагон 1 (7-А) | Провідник: Класний керівник</div>
+</div>
+
+<div class="main-layout">
+    <div class="card-section">
+        <div class="card-title"><span>📷 Контроль квитків</span></div>
+        <div id="reader"></div>
+        <div id="ticker">Очікування посадочних квитків...</div>
+    </div>
+
+    <div class="card-section">
+        <div class="card-title">
+            <span>🗺️ Схема місць</span>
+            <span id="counter" style="font-size: 14px; color: #94A3B8;">Пасажири: 0 / 27</span>
+        </div>
+        <div class="wagon" id="wagon-container"></div>
+    </div>
+</div>
+
+<audio id="beep" src="https://assets.mixkit.co/active_storage/sfx/911/911-200.wav" preload="auto"></audio>
+
+<script>
+    // ⚠️ ВСТАВ СВОЄ ПОСИЛАННЯ З GOOGLE APPS SCRIPT СЮДИ:
+    const GOOGLE_API = "СЮДИ_ВСТАВИТИ_URL_З_КРОКУ_1";
+
+    // Словник студентів для інклюзивного (ручного) введення
+    const studentManifest = {
+        1: "Андрієнко Дмитро", 2: "Бойко Юлія", 3: "Василенко Артем", 4: "Григоренко Анна",
+        5: "Даниленко Максим", 6: "Єгорова Марія", 7: "Жук Владислав", 8: "Зоренко Ольга",
+        9: "Іванов Денис", 10: "Коваленко Тетяна", 11: "Левченко Роман", 12: "Марченко Вероніка",
+        13: "Назаренко Ігор", 14: "Олійник Софія", 15: "Петренко Дмитро", 16: "Романова Анастасія",
+        17: "Сидоренко Артур", 18: "Ткаченко Вікторія", 19: "Усенко Богдан", 20: "Федорова Олена",
+        21: "Харченко Назар", 22: "Цимбалюк Христина", 23: "Чернова Діана", 24: "Шевченко Ярослав",
+        25: "Щербак Катерина", 26: "Юрченко Олексій", 27: "Якименко Аліна"
+    };
+
+    const nushFeedback = {
+        1: "Смачного гарячого чаю у фірмовому підстаканнику! ☕",
+        2: "Твоє место біля вікна! Сьогодні ти першим побачиш дива Сахари. 🪟",
+        3: "Постіль застелено! Твій робочий зошит сьогодні — зразок охайності. ✍️",
+        4: "Стукіт коліс заспокоює... Твоя суперсила сьогодні — залізобетонний спокій. 🧘",
+        5: "Вагон-ресторан запрошує! Підсиль команду купе крутою ідеєю. 🍏",
+        6: "Зупинка 'Смакота'! Отримай віртуальну цукерку за перший правильний інсайт. 🍬",
+        7: "Щасливий квиток! Сьогодні твій вечір релаксу — повний імунітет від д/з! 📖❌",
+        8: "Подорожній лайфхак: Отримуєш +1 бал до практичної роботи за вчасність! 📈",
+        9: "Чай від начальника поїзда: Твоя перша відповідь коштує на 1 бал дорожче! 👑",
+        10: "Експрес-підказка: Ти маєш право на один 'дзвінок другу' (допомогу купе). 📞",
+        11: "Залізничний імунітет: Маєш право законно пропустити одне складне питання. 🛡️",
+        12: "Квиток з відкритим фіналом: Наприкінці уроку ти сам обираєш свій бал. 📊",
+        13: "Зміна маршруту: Маєш право один раз безкоштовно пересісти на інше місце. 🔁",
+        14: "Квиток першого класу! Твоє слово вирішальне в командній роботі. 🥇",
+        15: "Сигнал активовано! Твоя роль сьогодні — Штурман. Слідкуй за картою купе. 🗺️",
+        16: "Режим 'Швидкісний експрес': Твої думки летять зі швидкістю світла! 🚀",
+        17: "Секретний багаж: У тебе є таємне знання! Воно знадобиться всьому купе. 🧳",
+        18: "Майстер логістики: Твоє завдання — організувати роботу купе на всі 100%. 🧠",
+        19: "Попутний вітер! Будь-яка відповідь біля дошки сьогодні дасться легко. 💨",
+        20: "Wi-Fi без пароля! Ти на одній хвилі з космосом — транслюй ідеї в класі. 📡",
+        21: "Твій рейс без запізнень! Офіційний статус 'Надпунктуальний пасажир'. ⏱️",
+        22: "Мікро-місіння: Посміхнись трьом пасажирам свого вагона! 😊",
+        23: "Санітарна зона пройдена! Мислення чисте й готове до підкорення Африки. 🧼",
+        24: "Світловий індикатор: Сьогодні твоя черга драйвити клас і настрій. 💡",
+        25: "Енергетичний батончик провідника: Поділися позитивом із сусідом по купе. ⚡",
+        26: "Пейзаж за вікном змінюється, а твій успіх — незмінний. Ти крутий пасажир! 🌄",
+        27: "Колективний бонус! Твоє купе отримує право на спільну оцінку. 🍀"
+    };
+
+    const totalStudents = 27;
+    const checkedIn = new Set();
+
+    // Генерація вагону на інтерфейсі дошки
+    const wagonContainer = document.getElementById('wagon-container');
+    const totalCoupes = Math.ceil(totalStudents / 4);
+
+    for (let c = 1; c <= totalCoupes; c++) {
+        const coupe = document.createElement('div');
+        coupe.className = 'coupe';
+        coupe.innerHTML = `<div class="coupe-title">Купе ${c}</div>`;
+        const seatsGrid = document.createElement('div');
+        seatsGrid.className = 'seats-grid';
+        
+        for (let s = 1; s <= 4; s++) {
+            const seatId = (c - 1) * 4 + s;
+            if (seatId <= totalStudents) {
+                const seat = document.createElement('div');
+                seat.className = 'seat';
+                seat.id = `seat-${seatId}`;
+                seat.innerHTML = `<b>М-${seatId}</b><br><span style="color:#64748B">Вільне</span>`;
+                
+                // Інклюзивна функція: Посадка вручну по кліку на місце
+                seat.addEventListener('click', () => {
+                    if (!checkedIn.has(seatId)) {
+                        if (confirm(`Посадити пасажира ${studentManifest[seatId]} (Місце ${seatId}) вручну?`)) {
+                            activatePassenger(seatId, studentManifest[seatId], `7А-${seatId}`);
+                        }
+                    }
+                });
+                
+                seatsGrid.appendChild(seat);
+            }
+        }
+        coupe.appendChild(seatsGrid);
+        wagonContainer.appendChild(coupe);
+    }
+
+    // Загальна функція активації пасажира (і QR, і ручна)
+    function activatePassenger(seatNumber, studentName, rawId) {
+        if (checkedIn.has(seatNumber)) return;
+        checkedIn.add(seatNumber);
+
+        // Вібровідгук (Золотий стандарт для смартфонів)
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
+        }
+
+        // Звуковий ефект
+        document.getElementById('beep').play().catch(e => {});
+
+        // Оновлення інтерфейсу місця
+        const seatEl = document.getElementById(`seat-${seatNumber}`);
+        if (seatEl) {
+            seatEl.className = 'seat occupied';
+            seatEl.innerHTML = `<b>М-${seatNumber}</b><br>${studentName.split(' ')[0]}`;
+        }
+
+        // Оновлення лічильника
+        document.getElementById('counter').innerText = `Пасажири: ${checkedIn.size} / ${totalStudents}`;
+
+        // Виведення НУШ-фідбеку на табло інформації
+        const ticker = document.getElementById('ticker');
+        ticker.className = "animated-success";
+        ticker.innerHTML = `🎫 М-${seatNumber} [${studentName}]: ${nushFeedback[seatNumber]}`;
+
+        // Асинхронна відправка звіту в Google Sheets
+        fetch(GOOGLE_API, {
+            method: "POST",
+            mode: "no-cors",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ rawId: rawId, seat: seatNumber, name: studentName })
+        }).catch(err => console.log("Хмарний запис збережено локально"));
+    }
+
+    // Логіка QR-сканера з блокуванням брязкання (Debounce)
+    let isLock = false;
+    function onScanSuccess(decodedText) {
+        if (isLock) return;
+        isLock = true;
+
+        try {
+            // Очікуваний формат: "7А-05|Бойко Юлія"
+            const dataParts = decodedText.split('|');
+            const metaParts = dataParts[0].split('-');
+            const seatNumber = parseInt(metaParts[1]);
+            const studentName = dataParts[1];
+
+            if (seatNumber && studentName && !checkedIn.has(seatNumber)) {
+                activatePassenger(seatNumber, studentName, dataParts[0]);
+            }
+        } catch (e) {
+            document.getElementById('ticker').innerText = "⚠️ Помилка зчитування коду квитка.";
+        }
+
+        setTimeout(() => {
+            if (isLock) {
+                document.getElementById('ticker').className = "";
+                isLock = false;
+            }
+        }, 4000); // 4 секунди паузи між пасажирами
+    }
+
+    // Запуск камерного модуля
+    const html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+        fps: 10, 
+        qrbox: 250,
+        rememberLastUsedCamera: true
+    });
+    html5QrcodeScanner.render(onScanSuccess);
+</script>
+</body>
+</html>
